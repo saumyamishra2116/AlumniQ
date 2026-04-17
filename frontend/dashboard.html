@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | ALUMNIQ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard-layout">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon" style="width:32px;height:32px;font-size:0.8rem;">AQ</span>
+          <span class="logo-text" style="font-size:1.2rem;">ALUMNIQ</span>
+        </div>
+      </div>
+      
+      <div class="sidebar-nav">
+        <div class="nav-item active" data-target="dashboard">
+          <span>📊</span> Dashboard
+        </div>
+        <div class="nav-item" data-target="alumni">
+          <span>👨‍🎓</span> Alumni Directory
+        </div>
+        <div class="nav-item" data-target="mentorship">
+          <span>🤝</span> Mentorship Hub
+        </div>
+        <div class="nav-item" data-target="jobs">
+          <span>💼</span> Jobs & Internships
+        </div>
+        <div class="nav-item" data-target="events">
+          <span>📅</span> Events & Reunions
+        </div>
+      </div>
+      
+      <div class="sidebar-footer">
+        <button id="logoutBtn" class="btn btn-outline btn-full">Log Out</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="menu-toggle d-none" id="menuToggle">☰</div>
+        <div class="page-title"><h3 id="topbarTitle" style="font-family: var(--font-body); font-weight: 500;">Dashboard</h3></div>
+        <div class="user-profile">
+          <span class="user-name" id="displayUserName">Welcome</span>
+          <div class="avatar" id="avatarLetter">U</div>
+        </div>
+      </header>
+
+      <!-- Sections container -->
+      <div id="sections-wrapper">
+        
+        <!-- Dashboard Section -->
+        <section id="section-dashboard" class="page-section active">
+          <h2 class="section-title">Welcome to Alumiq</h2>
+          <p class="section-desc">Overview of your alumni network and opportunities.</p>
+          
+          <div class="dash-grid" style="margin-bottom: 2rem;">
+            <div class="stat-item glass">
+              <h3 id="statAlumni">0</h3>
+              <p>Registered Alumni</p>
+            </div>
+            <div class="stat-item glass">
+              <h3 id="statJobs">0</h3>
+              <p>Active Jobs</p>
+            </div>
+            <div class="stat-item glass">
+              <h3 id="statEvents">0</h3>
+              <p>Upcoming Events</p>
+            </div>
+          </div>
+          
+          <div class="dash-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Quick Actions</h3>
+              </div>
+              <p style="color:var(--text-muted); margin-bottom:1rem; font-size:0.9rem;">Navigate through the platform to discover connections and opportunities.</p>
+              <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="document.querySelector('[data-target=alumni]').click()">Find Mentors</button>
+                <button class="btn btn-outline" onclick="document.querySelector('[data-target=jobs]').click()">Browse Jobs</button>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Your Profile Status</h3>
+              </div>
+              <div style="display:flex; align-items:center; gap:1rem;">
+                <div class="avatar" style="width:60px; height:60px; font-size:1.5rem;" id="profileAvatar">U</div>
+                <div>
+                  <h4 id="profileName">User Name</h4>
+                  <p style="color:var(--text-muted); font-size:0.85rem;" id="profileRole">Student</p>
+                  <span class="badge badge-success mt-1" style="display:inline-block;">Verified</span>
+                </div>
+              </div>
+              <div style="margin-top: 1.5rem;">
+                <button class="btn btn-outline btn-full" id="btnEditProfile">Edit Profile</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Alumni Directory Section -->
+        <section id="section-alumni" class="page-section">
+          <h2 class="section-title">Alumni Directory</h2>
+          <p class="section-desc">Connect with verified graduates from your institution.</p>
+          
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Batch</th>
+                  <th>Company</th>
+                  <th>Role</th>
+                  <th>Location</th>
+                  <th>Mentor</th>
+                </tr>
+              </thead>
+              <tbody id="alumniTableBody">
+                <tr><td colspan="6" class="empty-state">Loading alumni data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Mentorship Section -->
+        <section id="section-mentorship" class="page-section">
+          <h2 class="section-title">Mentorship Hub</h2>
+          <p class="section-desc">Discover alumni who are open to guiding students.</p>
+          <div class="dash-grid" id="mentorshipGrid">
+            <!-- Populated dynamically -->
+            <div class="empty-state" style="grid-column: 1/-1;">Loading mentors...</div>
+          </div>
+        </section>
+
+        <!-- Jobs Section -->
+        <section id="section-jobs" class="page-section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h2 class="section-title" style="margin-bottom: 0;">Jobs & Internships</h2>
+            <button class="btn btn-primary" id="btnPostJob">Post a Job</button>
+          </div>
+          <p class="section-desc">Opportunities shared by alumni for the community.</p>
+          <div class="dash-grid" id="jobsGrid">
+            <!-- Populated dynamically -->
+            <div class="empty-state" style="grid-column: 1/-1;">Loading jobs...</div>
+          </div>
+        </section>
+
+        <!-- Events Section -->
+        <section id="section-events" class="page-section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h2 class="section-title" style="margin-bottom: 0;">Events & Reunions</h2>
+            <button class="btn btn-primary" id="btnPostEvent">Create Event</button>
+          </div>
+          <p class="section-desc">Stay updated with institute meets and workshops.</p>
+          
+          <div style="max-width: 800px; margin: 0 auto;">
+            <div class="timeline" id="eventsTimeline">
+              <!-- Populated dynamically -->
+              <div class="empty-state">Loading events...</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal d-none" id="editProfileModal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h3>Edit Profile</h3>
+        <span class="close-modal" id="closeEditProfile">&times;</span>
+      </div>
+      <form id="editProfileForm">
+        <div class="form-group">
+          <label>Company / University</label>
+          <input type="text" id="editCompany" class="form-control" placeholder="E.g., Microsoft or IIT Delhi">
+        </div>
+        <div class="form-group">
+          <label>Job Role</label>
+          <input type="text" id="editJobRole" class="form-control" placeholder="E.g., Software Engineer">
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="editLocation" class="form-control" placeholder="E.g., Bengaluru">
+        </div>
+        <div class="form-group d-none" id="mentorGroup">
+          <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="editMentor"> Open to mentoring students
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Save Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Post a Job Modal -->
+  <div class="modal d-none" id="postJobModal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h3>Post a Job or Internship</h3>
+        <span class="close-modal" id="closePostJob">&times;</span>
+      </div>
+      <form id="postJobForm">
+        <div class="form-group">
+          <label>Job Title</label>
+          <input type="text" id="jobTitle" class="form-control" placeholder="E.g., Frontend Developer" required>
+        </div>
+        <div class="form-group">
+          <label>Company</label>
+          <input type="text" id="jobCompany" class="form-control" placeholder="E.g., Google" required>
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="jobLocation" class="form-control" placeholder="E.g., Remote / Noida" required>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="jobType" class="form-control" required>
+            <option value="Full-time">Full-time</option>
+            <option value="Part-time">Part-time</option>
+            <option value="Internship">Internship</option>
+            <option value="Contract">Contract</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Skills Required (comma-separated)</label>
+          <input type="text" id="jobSkills" class="form-control" placeholder="HTML, CSS, React">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Post Job</button>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Create Event Modal -->
+  <div class="modal d-none" id="postEventModal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h3>Create Event</h3>
+        <span class="close-modal" id="closePostEvent">&times;</span>
+      </div>
+      <form id="postEventForm">
+        <div class="form-group">
+          <label>Event Title</label>
+          <input type="text" id="eventTitle" class="form-control" placeholder="E.g., Batch 2026 Reunion" required>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="eventDate" class="form-control" required style="cursor: text;">
+        </div>
+        <div class="form-group">
+          <label>Mode / Venue</label>
+          <input type="text" id="eventMode" class="form-control" placeholder="E.g., On-Campus or Online link" required>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="eventDesc" class="form-control" placeholder="Short description of the event..." required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Post Event</button>
+      </form>
+    </div>
+  </div>
+  
+  <script src="script.js"></script>
+</body>
+</html>
