@@ -8,8 +8,13 @@ try { require("dotenv").config(); } catch (_) {}
 
 const app = express();
 
+
 // Middleware
 app.use(express.json());
+
+app.get("/", (req, res) => {
+  res.send("ALUMNIQ Backend is running successfully!");
+});
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
