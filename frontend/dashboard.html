@@ -273,6 +273,23 @@
     </div>
   </div>
   
+  <script>
+    // INLINE AUTH BOOTSTRAP — runs before script.js to guarantee user data is in localStorage
+    (function() {
+      var hash = window.location.hash;
+      if (hash && hash.indexOf("#userdata=") === 0) {
+        try {
+          var encoded = hash.substring("#userdata=".length);
+          var userData = JSON.parse(decodeURIComponent(encoded));
+          if (userData && userData.name) {
+            localStorage.setItem("alumiq_user", JSON.stringify(userData));
+          }
+        } catch(e) {}
+        // Clean the hash from URL without reload
+        history.replaceState(null, "", window.location.pathname);
+      }
+    })();
+  </script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -3,6 +3,9 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 
+// Load .env file if present (local dev)
+try { require("dotenv").config(); } catch (_) {}
+
 const app = express();
 
 // Middleware
@@ -16,15 +19,22 @@ app.use(cors({
 /* =========================
    DATABASE CONNECTION
 ========================= */
-// MongoDB Atlas connection with full replica-set URI (includes database name)
-const MONGO_URI = "mongodb://saumyamishra6:saumyaalumniq@ac-yllvsg4-shard-00-00.fmdhrdf.mongodb.net:27017,ac-yllvsg4-shard-00-01.fmdhrdf.mongodb.net:27017,ac-yllvsg4-shard-00-02.fmdhrdf.mongodb.net:27017/alumiq?ssl=true&replicaSet=atlas-hgcwyb-shard-0&authSource=admin&appName=Cluster0";
+// MongoDB Atlas connection — reads from MONGO_URI env var, falls back to hardcoded Atlas URI
+const MONGO_URI = process.env.MONGO_URI ||
+  "mongodb+srv://alumniq-yt:rez26.LncyKbV3r@alumniq.xg7qyhq.mongodb.net/";
 
-mongoose.connect(MONGO_URI)
+mongoose.connect(MONGO_URI, { appName: "alumiq-backend" })
   .then(() => console.log("✅ MongoDB Connected successfully"))
   .catch(err => {
     console.error("❌ MongoDB connection error:", err.message);
+    console.error("Full error:", err);
     console.error("⚠️  Server will still run but DB operations will fail. Check your Atlas credentials and IP whitelist.");
   });
+
+// Helper — returns true only when Mongoose is fully connected
+function isDbReady() {
+  return mongoose.connection.readyState === 1;
+}
 
 /* =========================
    USER SCHEMA
@@ -86,6 +96,12 @@ const MentorshipRequest = mongoose.model("MentorshipRequest", mentorshipRequestS
 ========================= */
 app.post("/api/register", async (req, res) => {
   console.log("REGISTER API HIT");
+
+  if (!isDbReady()) {
+    console.error("❌ Register failed: MongoDB not connected (state:", mongoose.connection.readyState, ")");
+    return res.status(503).json({ message: "Database not connected. Please try again in a moment." });
+  }
+
   try {
     const { name, email, phone, college, roll, branch, year, password, role } = req.body;
 
@@ -101,29 +117,47 @@ app.post("/api/register", async (req, res) => {
     });
 
     await user.save();
-    res.status(201).json({ message: "Registration successful" });
+    res.status(201).json({
+      message: "Registration successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (err) {
-    console.log("REAL ERROR:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("REGISTER ERROR:", err.stack || err);
+    res.status(500).json({ message: "Server error: " + err.message });
   }
 });
 
 app.post("/api/login", async (req, res) => {
   console.log("LOGIN API HIT");
+
+  if (!isDbReady()) {
+    console.error("❌ Login failed: MongoDB not connected (state:", mongoose.connection.readyState, ")");
+    return res.status(503).json({ message: "Database not connected. Please try again in a moment." });
+  }
+
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required." });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid email" });
+      return res.status(400).json({ message: "No account found with that email." });
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res.status(400).json({ message: "Wrong password" });
+      return res.status(400).json({ message: "Incorrect password." });
     }
 
-    // Usually we would send a JWT here, for this simplified version, we just send user info.
     res.status(200).json({
       message: "Login successful",
       user: {
@@ -134,8 +168,8 @@ app.post("/api/login", async (req, res) => {
       }
     });
   } catch (err) {
-    console.log("REAL ERROR:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("LOGIN ERROR:", err.stack || err);
+    res.status(500).json({ message: "Server error: " + err.message });
   }
 });
 
@@ -149,10 +183,33 @@ app.get("/api/alumni", async (req, res) => {
 
     // If DB is empty, let's return some mock data to show the premium UI works!
     if (alumni.length === 0) {
+      // Full 25-alumni mock dataset — used when DB is empty
       return res.json([
-        { name: "Aarav Sharma", year: "2020", branch: "CSE", location: "Delhi", company: "TCS", jobRole: "Software Engineer", mentor: true },
-        { name: "Saumya Verma", year: "2019", branch: "ECE", location: "Bengaluru", company: "Infosys", jobRole: "System Engineer", mentor: false },
-        { name: "Harshit Jain", year: "2018", branch: "IT", location: "Noida", company: "Microsoft", jobRole: "Cloud Engineer", mentor: true }
+        { name: "Aarav Sharma", year: "2020", branch: "CSE", college: "NIT Bhopal", location: "Delhi", company: "TCS", jobRole: "Software Engineer", mentor: true },
+        { name: "Saumya Mishra", year: "2019", branch: "ECE", college: "NIT Bhopal", location: "Bengaluru", company: "Infosys", jobRole: "System Engineer", mentor: false },
+        { name: "Harshit Jain", year: "2018", branch: "IT", college: "NIT Bhopal", location: "Hyderabad", company: "Microsoft", jobRole: "Cloud Engineer", mentor: true },
+        { name: "Priya Patel", year: "2021", branch: "CSE", college: "NIT Bhopal", location: "Bengaluru", company: "Google", jobRole: "SWE II", mentor: true },
+        { name: "Rahul Mehta", year: "2020", branch: "ME", college: "NIT Bhopal", location: "Pune", company: "Bosch", jobRole: "Design Engineer", mentor: false },
+        { name: "Ananya Singh", year: "2019", branch: "CSE", college: "NIT Bhopal", location: "Bengaluru", company: "Amazon", jobRole: "SDE I", mentor: true },
+        { name: "Vikram Rao", year: "2018", branch: "EEE", college: "NIT Bhopal", location: "Chennai", company: "Siemens", jobRole: "Electrical Engineer", mentor: false },
+        { name: "Meera Iyer", year: "2022", branch: "CSE", college: "NIT Bhopal", location: "Noida", company: "Wipro", jobRole: "Associate Engineer", mentor: false },
+        { name: "Karan Gupta", year: "2017", branch: "CSE", college: "NIT Bhopal", location: "Bengaluru", company: "Flipkart", jobRole: "Staff Engineer", mentor: true },
+        { name: "Neha Agarwal", year: "2020", branch: "DS", college: "NIT Bhopal", location: "Bengaluru", company: "Mu Sigma", jobRole: "Data Scientist", mentor: false },
+        { name: "Rohit Bhatt", year: "2019", branch: "CSE", college: "NIT Bhopal", location: "Gurugram", company: "Zomato", jobRole: "Backend Engineer", mentor: true },
+        { name: "Shreya Kapoor", year: "2021", branch: "IT", college: "NIT Bhopal", location: "Mumbai", company: "Accenture", jobRole: "Technology Analyst", mentor: false },
+        { name: "Arjun Nair", year: "2018", branch: "CSE", college: "NIT Bhopal", location: "Hyderabad", company: "Oracle", jobRole: "Java Developer", mentor: true },
+        { name: "Divya Chaudhary", year: "2020", branch: "ECE", college: "NIT Bhopal", location: "Bengaluru", company: "Qualcomm", jobRole: "VLSI Engineer", mentor: false },
+        { name: "Sumit Tiwari", year: "2017", branch: "IT", college: "NIT Bhopal", location: "Delhi", company: "IBM", jobRole: "Senior Consultant", mentor: true },
+        { name: "Pooja Mishra", year: "2021", branch: "CSE", college: "NIT Bhopal", location: "Noida", company: "Paytm", jobRole: "Frontend Developer", mentor: false },
+        { name: "Aditya Kumar", year: "2019", branch: "ME", college: "NIT Bhopal", location: "Pune", company: "TATA Motors", jobRole: "Product Engineer", mentor: false },
+        { name: "Ishaan Chatterjee", year: "2022", branch: "CSE", college: "NIT Bhopal", location: "Bengaluru", company: "Razorpay", jobRole: "SDE I", mentor: false },
+        { name: "Kavya Reddy", year: "2020", branch: "CSE", college: "NIT Bhopal", location: "Bengaluru", company: "Swiggy", jobRole: "Data Engineer", mentor: true },
+        { name: "Nikhil Desai", year: "2018", branch: "IT", college: "NIT Bhopal", location: "Noida", company: "HCL Technologies", jobRole: "System Architect", mentor: true },
+        { name: "Tanvi Malhotra", year: "2021", branch: "EEE", college: "NIT Bhopal", location: "Pune", company: "L&T Technology", jobRole: "Embedded Engineer", mentor: false },
+        { name: "Gaurav Saxena", year: "2017", branch: "CSE", college: "NIT Bhopal", location: "Bengaluru", company: "Uber", jobRole: "Senior SDE", mentor: true },
+        { name: "Riya Pandey", year: "2019", branch: "DS", college: "NIT Bhopal", location: "Bengaluru", company: "PhonePe", jobRole: "ML Engineer", mentor: false },
+        { name: "Aakash Dubey", year: "2020", branch: "CSE", college: "NIT Bhopal", location: "Bengaluru", company: "Ola", jobRole: "Full Stack Developer", mentor: true },
+        { name: "Simran Kaur", year: "2022", branch: "IT", college: "NIT Bhopal", location: "Mumbai", company: "Deloitte", jobRole: "Technology Consultant", mentor: false }
       ]);
     }
 
@@ -289,9 +346,12 @@ app.use((err, req, res, next) => {
 });
 
 /* =========================
-   START SERVER
+   START SERVER (local dev only)
+   Vercel uses module.exports = app for serverless
 ========================= */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
+
+module.exports = app;

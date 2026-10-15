@@ -61,6 +61,59 @@
     <p class="auth-footer">Already have an account? <a href="login.html">Log In</a></p>
   </div>
   
-  <script src="script.js"></script>
+  <script>
+    // INLINE REGISTRATION HANDLER — cannot be cached, guaranteed to work
+    (function() {
+      var API_URL = "http://localhost:5000/api";
+
+      document.addEventListener("DOMContentLoaded", function() {
+        var regForm = document.getElementById("regForm");
+        if (!regForm) return;
+
+        regForm.addEventListener("submit", function(e) {
+          e.preventDefault();
+          var alertDiv = document.getElementById("regAlert");
+
+          var payload = {
+            name: document.getElementById("regName").value,
+            email: document.getElementById("regEmail").value,
+            phone: document.getElementById("regPhone").value,
+            college: document.getElementById("regCollege").value,
+            branch: document.getElementById("regBranch").value,
+            year: document.getElementById("regYear").value,
+            role: document.getElementById("regRole").value,
+            password: document.getElementById("regPassword").value
+          };
+
+          fetch(API_URL + "/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          })
+          .then(function(res) {
+            return res.json().then(function(data) {
+              return { ok: res.ok, data: data };
+            });
+          })
+          .then(function(result) {
+            if (result.ok) {
+              // Save user to localStorage
+              localStorage.setItem("alumiq_user", JSON.stringify(result.data.user));
+              // Navigate to dashboard with user data in hash (bulletproof)
+              var userHash = encodeURIComponent(JSON.stringify(result.data.user));
+              window.location.replace("dashboard.html#userdata=" + userHash);
+            } else {
+              alertDiv.textContent = result.data.message;
+              alertDiv.className = "alert error";
+            }
+          })
+          .catch(function(err) {
+            alertDiv.textContent = "Server error. Is the backend running on port 5000?";
+            alertDiv.className = "alert error";
+          });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

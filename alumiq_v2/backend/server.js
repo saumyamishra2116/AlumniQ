@@ -13,7 +13,7 @@ app.use(cors());
    DATABASE CONNECTION
 ========================= */
 // Reusing provided MongoDB URI. In production, use environment variables.
-mongoose.connect("mongodb+srv://Saumydatabase94523:Saumya%40harsh@cluster0.0thxzxa.mongodb.net/?appName=Cluster0")
+mongoose.connect("mongodb+srv://alumniq-yt:rez26.LncyKbV3r@alumniq.xg7qyhq.mongodb.net/")
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log(err));
 

@@ -94,7 +94,7 @@
               <div class="card-header">
                 <h3 class="card-title">Your Profile Status</h3>
               </div>
-              <div style="display:flex; align-items:center; gap:1rem;">
+              <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.2rem;">
                 <div class="avatar" style="width:60px; height:60px; font-size:1.5rem;" id="profileAvatar">U</div>
                 <div>
                   <h4 id="profileName">User Name</h4>
@@ -102,15 +102,47 @@
                   <span class="badge badge-success mt-1" style="display:inline-block;">Verified</span>
                 </div>
               </div>
+              <div style="margin-bottom:1rem; font-size:0.85rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.3rem;">
+                <span id="profileCompanyDisplay" style="display:none;">🏢 <span id="profileCompanyText"></span></span>
+                <span id="profileJobRoleDisplay" style="display:none;">💼 <span id="profileJobRoleText"></span></span>
+                <span id="profileLocationDisplay" style="display:none;">📍 <span id="profileLocationText"></span></span>
+              </div>
+              <button class="btn btn-outline btn-full" id="btnEditProfile">✏️ Edit Profile</button>
             </div>
           </div>
         </section>
 
         <!-- Alumni Directory Section -->
         <section id="section-alumni" class="page-section">
-          <h2 class="section-title">Alumni Directory</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <h2 class="section-title" style="margin-bottom:0;">Alumni Directory</h2>
+            <span id="alumniCount" style="font-size:0.85rem; color:var(--text-muted);"></span>
+          </div>
           <p class="section-desc">Connect with verified graduates from your institution.</p>
-          
+
+          <!-- Search & Filter Bar -->
+          <div class="alumni-search-bar">
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input
+                type="text"
+                id="alumniSearchInput"
+                class="search-input"
+                placeholder="Search by name, company, role, location, branch…"
+                autocomplete="off"
+              >
+              <button id="alumniSearchClear" class="search-clear d-none" title="Clear">✕</button>
+            </div>
+            <div class="filter-chips">
+              <button class="chip chip-active" data-filter="all">All</button>
+              <button class="chip" data-filter="mentor">Mentors Only</button>
+              <button class="chip" data-filter="cse">CSE</button>
+              <button class="chip" data-filter="it">IT</button>
+              <button class="chip" data-filter="ece">ECE</button>
+              <button class="chip" data-filter="me">ME</button>
+            </div>
+          </div>
+
           <div class="table-container">
             <table>
               <thead>
@@ -142,7 +174,10 @@
 
         <!-- Jobs Section -->
         <section id="section-jobs" class="page-section">
-          <h2 class="section-title">Jobs & Internships</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h2 class="section-title" style="margin-bottom: 0;">Jobs &amp; Internships</h2>
+            <button class="btn btn-primary" id="btnPostJob">+ Post a Job</button>
+          </div>
           <p class="section-desc">Opportunities shared by alumni for the community.</p>
           <div class="dash-grid" id="jobsGrid">
             <!-- Populated dynamically -->
@@ -152,7 +187,10 @@
 
         <!-- Events Section -->
         <section id="section-events" class="page-section">
-          <h2 class="section-title">Events & Reunions</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h2 class="section-title" style="margin-bottom: 0;">Events &amp; Reunions</h2>
+            <button class="btn btn-primary" id="btnPostEvent">+ Create Event</button>
+          </div>
           <p class="section-desc">Stay updated with institute meets and workshops.</p>
           
           <div style="max-width: 800px; margin: 0 auto;">
@@ -166,7 +204,104 @@
       </div>
     </main>
   </div>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal d-none" id="editProfileModal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h3>Edit Profile</h3>
+        <span class="close-modal" id="closeEditProfile">&times;</span>
+      </div>
+      <form id="editProfileForm">
+        <div class="form-group">
+          <label>Company / University</label>
+          <input type="text" id="editCompany" class="form-control" placeholder="E.g., Microsoft or IIT Delhi">
+        </div>
+        <div class="form-group">
+          <label>Job Role</label>
+          <input type="text" id="editJobRole" class="form-control" placeholder="E.g., Software Engineer">
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="editLocation" class="form-control" placeholder="E.g., Bengaluru">
+        </div>
+        <div class="form-group d-none" id="mentorGroup">
+          <label style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="editMentor"> Open to mentoring students
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Save Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Post a Job Modal -->
+  <div class="modal d-none" id="postJobModal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h3>Post a Job or Internship</h3>
+        <span class="close-modal" id="closePostJob">&times;</span>
+      </div>
+      <form id="postJobForm">
+        <div class="form-group">
+          <label>Job Title</label>
+          <input type="text" id="jobTitle" class="form-control" placeholder="E.g., Frontend Developer" required>
+        </div>
+        <div class="form-group">
+          <label>Company</label>
+          <input type="text" id="jobCompany" class="form-control" placeholder="E.g., Google" required>
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="jobLocation" class="form-control" placeholder="E.g., Remote / Noida" required>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="jobType" class="form-control" required>
+            <option value="Full-time">Full-time</option>
+            <option value="Part-time">Part-time</option>
+            <option value="Internship">Internship</option>
+            <option value="Contract">Contract</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Skills Required (comma-separated)</label>
+          <input type="text" id="jobSkills" class="form-control" placeholder="HTML, CSS, React">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Post Job</button>
+      </form>
+    </div>
+  </div>
   
+  <!-- Create Event Modal -->
+  <div class="modal d-none" id="postEventModal">
+    <div class="modal-content glass">
+      <div class="modal-header">
+        <h3>Create Event</h3>
+        <span class="close-modal" id="closePostEvent">&times;</span>
+      </div>
+      <form id="postEventForm">
+        <div class="form-group">
+          <label>Event Title</label>
+          <input type="text" id="eventTitle" class="form-control" placeholder="E.g., Batch 2026 Reunion" required>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="eventDate" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Mode / Venue</label>
+          <input type="text" id="eventMode" class="form-control" placeholder="E.g., On-Campus or Online" required>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="eventDesc" class="form-control" placeholder="Short description of the event..." required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Create Event</button>
+      </form>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>

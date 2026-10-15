@@ -1,5 +1,10 @@
-// Config
-const API_URL = "http://localhost:5000/api";
+// Config — auto-detect local vs. Vercel deployment
+const API_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+  ? "http://localhost:5000/api"
+  : "/api";
+
+// Cache for alumni data (used by search)
+let allAlumni = [];
 
 // Helper to handle navigation between sections
 function setupNavigation() {
@@ -52,7 +57,32 @@ function checkAuth() {
     document.getElementById("profileRole").textContent = user.role.toUpperCase();
     const initial = user.name.charAt(0).toUpperCase();
     document.getElementById("avatarLetter").textContent = initial;
-    document.getElementById("profileAvatar").textContent = initial;
+    if (document.getElementById("profileAvatar")) document.getElementById("profileAvatar").textContent = initial;
+
+    // Show profile detail previews if available
+    if (user.company && document.getElementById("profileCompanyDisplay")) {
+      document.getElementById("profileCompanyText").textContent = user.company;
+      document.getElementById("profileCompanyDisplay").style.display = "inline";
+    }
+    if (user.jobRole && document.getElementById("profileJobRoleDisplay")) {
+      document.getElementById("profileJobRoleText").textContent = user.jobRole;
+      document.getElementById("profileJobRoleDisplay").style.display = "inline";
+    }
+    if (user.location && document.getElementById("profileLocationDisplay")) {
+      document.getElementById("profileLocationText").textContent = user.location;
+      document.getElementById("profileLocationDisplay").style.display = "inline";
+    }
+
+    // Setup Edit Profile Modal fields
+    if (document.getElementById("editCompany")) {
+      document.getElementById("editCompany").value = user.company || "";
+      document.getElementById("editJobRole").value = user.jobRole || "";
+      document.getElementById("editLocation").value = user.location || "";
+      document.getElementById("editMentor").checked = user.mentor || false;
+      if (user.role === "alumni" || user.role === "faculty") {
+        document.getElementById("mentorGroup").classList.remove("d-none");
+      }
+    }
   }
 }
 
@@ -158,22 +188,10 @@ async function loadDashboardData() {
     document.getElementById("statJobs").textContent = jobs.length;
     document.getElementById("statEvents").textContent = events.length;
 
-    // Render Alumni Table
-    const tbody = document.getElementById("alumniTableBody");
-    if (alumni.length > 0) {
-      tbody.innerHTML = alumni.map(a => `
-        <tr>
-          <td><strong>${a.name}</strong></td>
-          <td>${a.year || 'N/A'}</td>
-          <td>${a.company || 'N/A'}</td>
-          <td>${a.jobRole || 'N/A'}</td>
-          <td>${a.location || 'N/A'}</td>
-          <td>${a.mentor ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-info">No</span>'}</td>
-        </tr>
-      `).join('');
-    } else {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No alumni found.</td></tr>';
-    }
+    // Cache & Render Alumni Table
+    allAlumni = alumni;
+    renderAlumniTable(alumni);
+    setupAlumniSearch();
 
     // Render Mentorship Hub
     const mentors = alumni.filter(a => a.mentor);
@@ -189,7 +207,12 @@ async function loadDashboardData() {
           <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem">
             ${m.branch || 'Unknown Branch'} • Class of ${m.year || 'Unknown'} • ${m.location || 'Remote'}
           </p>
-          <button class="btn btn-outline btn-full" onclick="alert('Request sent to ${m.name}!')">Request Mentorship</button>
+          <button
+            class="btn btn-outline btn-full"
+            data-mentor-id="${m._id || ''}"
+            data-mentor-name="${m.name}"
+            onclick="requestMentorship(this)"
+          >Request Mentorship</button>
         </div>
       `).join('');
     } else {
@@ -244,12 +267,332 @@ async function loadDashboardData() {
   }
 }
 
-// Initialization
+/* ==============================================
+   ALUMNI TABLE RENDER HELPER
+============================================== */
+function renderAlumniTable(list) {
+  const tbody = document.getElementById("alumniTableBody");
+  const countEl = document.getElementById("alumniCount");
+  if (!tbody) return;
+
+  if (countEl) {
+    countEl.textContent = list.length > 0
+      ? `Showing ${list.length} of ${allAlumni.length} alumni`
+      : "";
+  }
+
+  if (list.length > 0) {
+    tbody.innerHTML = list.map(a => `
+      <tr>
+        <td><strong>${a.name}</strong></td>
+        <td>${a.year || 'N/A'}</td>
+        <td>${a.company || 'N/A'}</td>
+        <td>${a.jobRole || 'N/A'}</td>
+        <td>${a.location || 'N/A'}</td>
+        <td>${a.mentor ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-info">No</span>'}</td>
+      </tr>
+    `).join('');
+  } else {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No alumni match your search.</td></tr>';
+  }
+}
+
+/* ==============================================
+   ALUMNI SEARCH & FILTER
+============================================== */
+function setupAlumniSearch() {
+  const input     = document.getElementById("alumniSearchInput");
+  const clearBtn  = document.getElementById("alumniSearchClear");
+  const chips     = document.querySelectorAll(".chip[data-filter]");
+  if (!input) return;
+
+  let activeFilter = "all";
+
+  function applyFilters() {
+    const query = input.value.trim().toLowerCase();
+    let result = allAlumni;
+
+    // Chip filter
+    if (activeFilter === "mentor") {
+      result = result.filter(a => a.mentor);
+    } else if (activeFilter !== "all") {
+      result = result.filter(a => (a.branch || "").toLowerCase() === activeFilter);
+    }
+
+    // Text search — matches name, company, role, location, branch, year
+    if (query) {
+      result = result.filter(a =>
+        (a.name      || "").toLowerCase().includes(query) ||
+        (a.company   || "").toLowerCase().includes(query) ||
+        (a.jobRole   || "").toLowerCase().includes(query) ||
+        (a.location  || "").toLowerCase().includes(query) ||
+        (a.branch    || "").toLowerCase().includes(query) ||
+        (a.year      || "").toLowerCase().includes(query)
+      );
+    }
+
+    renderAlumniTable(result);
+    clearBtn.classList.toggle("d-none", !query);
+  }
+
+  input.addEventListener("input", applyFilters);
+
+  clearBtn.addEventListener("click", () => {
+    input.value = "";
+    clearBtn.classList.add("d-none");
+    applyFilters();
+    input.focus();
+  });
+
+  chips.forEach(chip => {
+    chip.addEventListener("click", () => {
+      chips.forEach(c => c.classList.remove("chip-active"));
+      chip.classList.add("chip-active");
+      activeFilter = chip.getAttribute("data-filter");
+      applyFilters();
+    });
+  });
+}
+
+/* ==============================================
+   MODAL LOGIC
+============================================== */
+function setupModals() {
+  const user = JSON.parse(localStorage.getItem("alumiq_user"));
+
+  // Edit Profile Modal
+  const editModal = document.getElementById("editProfileModal");
+  const btnEdit = document.getElementById("btnEditProfile");
+  const closeEdit = document.getElementById("closeEditProfile");
+  if (btnEdit && editModal && closeEdit) {
+    btnEdit.addEventListener("click", () => editModal.classList.remove("d-none"));
+    closeEdit.addEventListener("click", () => editModal.classList.add("d-none"));
+    editModal.addEventListener("click", (e) => { if (e.target === editModal) editModal.classList.add("d-none"); });
+  }
+
+  const editForm = document.getElementById("editProfileForm");
+  if (editForm) {
+    editForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!user) return;
+      const payload = {
+        company: document.getElementById("editCompany").value,
+        jobRole: document.getElementById("editJobRole").value,
+        location: document.getElementById("editLocation").value,
+        mentor: document.getElementById("editMentor").checked
+      };
+      const submitBtn = editForm.querySelector("button[type=submit]");
+      submitBtn.textContent = "Saving...";
+      try {
+        const res = await fetch(`${API_URL}/user/${user.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem("alumiq_user", JSON.stringify(data.user));
+          showToast("Profile updated successfully! ✅");
+          editModal.classList.add("d-none");
+          setTimeout(() => window.location.reload(), 1200);
+        } else {
+          showToast("Failed to update: " + data.message, true);
+        }
+      } catch (err) {
+        showToast("Server error connecting to backend.", true);
+      } finally {
+        submitBtn.textContent = "Save Changes";
+      }
+    });
+  }
+
+  // Post Job Modal
+  const jobModal = document.getElementById("postJobModal");
+  const btnPostJob = document.getElementById("btnPostJob");
+  const closeJob = document.getElementById("closePostJob");
+  if (btnPostJob && jobModal && closeJob) {
+    btnPostJob.addEventListener("click", () => jobModal.classList.remove("d-none"));
+    closeJob.addEventListener("click", () => jobModal.classList.add("d-none"));
+    jobModal.addEventListener("click", (e) => { if (e.target === jobModal) jobModal.classList.add("d-none"); });
+  }
+
+  const jobForm = document.getElementById("postJobForm");
+  if (jobForm) {
+    jobForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!user) return;
+      const payload = {
+        title: document.getElementById("jobTitle").value,
+        company: document.getElementById("jobCompany").value,
+        location: document.getElementById("jobLocation").value,
+        type: document.getElementById("jobType").value,
+        skills: document.getElementById("jobSkills").value,
+        postedBy: user.name
+      };
+      const submitBtn = jobForm.querySelector("button[type=submit]");
+      submitBtn.textContent = "Posting...";
+      try {
+        const res = await fetch(`${API_URL}/jobs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast("Job posted successfully! 🎉");
+          jobModal.classList.add("d-none");
+          jobForm.reset();
+          loadDashboardData();
+        } else {
+          const data = await res.json();
+          showToast("Failed to post job: " + data.message, true);
+        }
+      } catch (err) {
+        showToast("Server error connecting to backend.", true);
+      } finally {
+        submitBtn.textContent = "Post Job";
+      }
+    });
+  }
+
+  // Create Event Modal
+  const eventModal = document.getElementById("postEventModal");
+  const btnPostEvent = document.getElementById("btnPostEvent");
+  const closeEvent = document.getElementById("closePostEvent");
+  if (btnPostEvent && eventModal && closeEvent) {
+    btnPostEvent.addEventListener("click", () => eventModal.classList.remove("d-none"));
+    closeEvent.addEventListener("click", () => eventModal.classList.add("d-none"));
+    eventModal.addEventListener("click", (e) => { if (e.target === eventModal) eventModal.classList.add("d-none"); });
+  }
+
+  const eventForm = document.getElementById("postEventForm");
+  if (eventForm) {
+    eventForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!user) return;
+      const payload = {
+        title: document.getElementById("eventTitle").value,
+        date: document.getElementById("eventDate").value,
+        mode: document.getElementById("eventMode").value,
+        description: document.getElementById("eventDesc").value,
+        organizer: user.name
+      };
+      const submitBtn = eventForm.querySelector("button[type=submit]");
+      submitBtn.textContent = "Creating...";
+      try {
+        const res = await fetch(`${API_URL}/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast("Event created successfully! 📅");
+          eventModal.classList.add("d-none");
+          eventForm.reset();
+          loadDashboardData();
+        } else {
+          const data = await res.json();
+          showToast("Failed to create event: " + data.message, true);
+        }
+      } catch (err) {
+        showToast("Server error connecting to backend.", true);
+      } finally {
+        submitBtn.textContent = "Create Event";
+      }
+    });
+  }
+}
+
+/* ==============================================
+   MENTORSHIP REQUEST
+============================================== */
+async function requestMentorship(btn) {
+  const user = JSON.parse(localStorage.getItem("alumiq_user"));
+  if (!user) {
+    showToast("Please log in to request mentorship.", true);
+    return;
+  }
+  const mentorId   = btn.getAttribute("data-mentor-id");
+  const mentorName = btn.getAttribute("data-mentor-name");
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+  try {
+    const res = await fetch(`${API_URL}/mentorship/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requesterId:   user.id,
+        requesterName: user.name,
+        mentorId:      mentorId,
+        mentorName:    mentorName
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      btn.textContent = "✅ Request Sent";
+      btn.classList.remove("btn-outline");
+      btn.classList.add("btn-primary");
+      showToast(`Mentorship request sent to ${mentorName}! 🤝`);
+    } else {
+      btn.disabled = false;
+      btn.textContent = "Request Mentorship";
+      showToast(data.message || "Failed to send request.", true);
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "Request Mentorship";
+    showToast("Server error. Is the backend running?", true);
+  }
+}
+
+/* ==============================================
+   TOAST NOTIFICATION
+============================================== */
+function showToast(message, isError = false) {
+  const existing = document.getElementById("aq-toast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.id = "aq-toast";
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    background: ${isError ? 'rgba(220, 53, 69, 0.9)' : 'rgba(52, 211, 153, 0.9)'};
+    color: #fff;
+    font-family: var(--font-body, Inter, sans-serif);
+    font-size: 0.95rem;
+    font-weight: 500;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  `;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.style.transform = "translateY(0)";
+    toast.style.opacity = "1";
+  });
+  setTimeout(() => {
+    toast.style.transform = "translateY(20px)";
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 400);
+  }, 3500);
+}
+
+/* ==============================================
+   INITIALIZATION
+============================================== */
 document.addEventListener("DOMContentLoaded", () => {
   checkAuth();
   setupNavigation();
+  setupModals();
   loadDashboardData();
-  
+
   // Mobile sidebar toggle
   const menuToggle = document.getElementById("menuToggle");
   const sidebar = document.querySelector(".sidebar");

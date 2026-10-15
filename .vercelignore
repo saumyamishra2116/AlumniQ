@@ -1,0 +1,6 @@
+node_modules
+backend/node_modules
+backend/seedData.js
+.git
+.vscode
+alumiq_v2
