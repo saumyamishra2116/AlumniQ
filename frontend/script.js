@@ -1,5 +1,7 @@
 // Config — auto-detect local vs. Vercel deployment
+
 const API_URL = "https://alumniq-btu5.onrender.com/api";
+
 
 // Helper to handle navigation between sections
 function setupNavigation() {
@@ -7,7 +9,6 @@ function setupNavigation() {
   const sections = document.querySelectorAll(".page-section");
   const topbarTitle = document.getElementById("topbarTitle");
 
-  if (!navItems.length) return; // Not on the dashboard page
 
   navItems.forEach(item => {
     item.addEventListener("click", () => {
