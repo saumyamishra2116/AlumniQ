@@ -61,59 +61,65 @@
     <p class="auth-footer">Already have an account? <a href="login.html">Log In</a></p>
   </div>
   
-  <script>
-    // INLINE REGISTRATION HANDLER — cannot be cached, guaranteed to work
-    (function() {
-      var API_URL = "http://localhost:5000/api";
+  
+<script>
+  const API_URL = "https://alumniq-btu5.onrender.com";
 
-      document.addEventListener("DOMContentLoaded", function() {
-        var regForm = document.getElementById("regForm");
-        if (!regForm) return;
+  document.getElementById("regForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
 
-        regForm.addEventListener("submit", function(e) {
-          e.preventDefault();
-          var alertDiv = document.getElementById("regAlert");
+    const alertDiv = document.getElementById("regAlert");
+    const submitButton = this.querySelector('button[type="submit"]');
 
-          var payload = {
-            name: document.getElementById("regName").value,
-            email: document.getElementById("regEmail").value,
-            phone: document.getElementById("regPhone").value,
-            college: document.getElementById("regCollege").value,
-            branch: document.getElementById("regBranch").value,
-            year: document.getElementById("regYear").value,
-            role: document.getElementById("regRole").value,
-            password: document.getElementById("regPassword").value
-          };
+    const payload = {
+      name: document.getElementById("regName").value.trim(),
+      email: document.getElementById("regEmail").value.trim(),
+      phone: document.getElementById("regPhone").value.trim(),
+      college: document.getElementById("regCollege").value.trim(),
+      branch: document.getElementById("regBranch").value.trim(),
+      year: document.getElementById("regYear").value.trim(),
+      role: document.getElementById("regRole").value,
+      password: document.getElementById("regPassword").value
+    };
 
-          fetch(API_URL + "/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          })
-          .then(function(res) {
-            return res.json().then(function(data) {
-              return { ok: res.ok, data: data };
-            });
-          })
-          .then(function(result) {
-            if (result.ok) {
-              // Save user to localStorage
-              localStorage.setItem("alumiq_user", JSON.stringify(result.data.user));
-              // Navigate to dashboard with user data in hash (bulletproof)
-              var userHash = encodeURIComponent(JSON.stringify(result.data.user));
-              window.location.replace("dashboard.html#userdata=" + userHash);
-            } else {
-              alertDiv.textContent = result.data.message;
-              alertDiv.className = "alert error";
-            }
-          })
-          .catch(function(err) {
-            alertDiv.textContent = "Server error. Is the backend running on port 5000?";
-            alertDiv.className = "alert error";
-          });
-        });
+    alertDiv.textContent = "Registering your account...";
+    alertDiv.className = "alert";
+    submitButton.disabled = true;
+
+    try {
+      const response = await fetch(`${API_URL}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
-    })();
-  </script>
-</body>
-</html>
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed.");
+      }
+
+      alertDiv.textContent = data.message || "Registration successful!";
+      alertDiv.className = "alert";
+
+      if (data.user) {
+        localStorage.setItem("alumiq_user", JSON.stringify(data.user));
+      }
+
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 1000);
+
+    } catch (error) {
+      console.error("Registration error:", error);
+      alertDiv.textContent =
+        error.message === "Failed to fetch"
+          ? "Could not connect to the server. Please try again."
+          : error.message;
+      alertDiv.className = "alert error";
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+</script>
+
