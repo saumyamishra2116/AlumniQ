@@ -1,5 +1,5 @@
 // Config — auto-detect local vs. Vercel deployment
-const API_URL = "http:///alumniq-btu5.onrender.com/register";
+const API_URL = "http://alumniq-btu5.onrender.com/api";
 
 // Helper to handle navigation between sections
 function setupNavigation() {
